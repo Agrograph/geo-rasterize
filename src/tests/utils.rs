@@ -1,5 +1,5 @@
 use std::fmt::Debug;
-use super::{MergeAlgorithm, PixelInclusion, Rasterize, Rasterizer};
+use super::{MergeAlgorithm, Rasterize, Rasterizer, PixelInclusion};
 use anyhow::Result;
 use geo::{
     algorithm::{

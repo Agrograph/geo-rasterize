@@ -3,17 +3,15 @@ use std::{iter::once, ops::Add};
 use geo::{coords_iter::CoordsIter, winding_order::Winding, LineString, Point};
 use itertools::Itertools;
 
-use crate::{Rasterize, Rasterizer};
+use crate::{PixelInclusion, Rasterize, Rasterizer};
 
 fn y_coordinates<'a>(
     first: &'a LineString<f64>,
     rest: &'a [LineString<f64>],
 ) -> impl Iterator<Item = isize> + 'a {
-    once(first).chain(rest).flat_map(|line_string| {
-        line_string
-            .points()
-            .map(|point| point.y().floor() as isize)
-    })
+    once(first)
+        .chain(rest)
+        .flat_map(|line_string| line_string.points().map(|point| point.y().floor() as isize))
 }
 
 type PointPair = (Point<f64>, Point<f64>);
@@ -147,7 +145,9 @@ pub fn rasterize_polygon<Label>(
 
     // All the code above this point only deals with the interior of
     // the polygon but this bit handles the exterior border.
-    once(first)
-        .chain(rest)
-        .for_each(|ls| ls.rasterize(rasterizer));
+    if rasterizer.pixel_inclusion == PixelInclusion::Touched {
+        once(first)
+            .chain(rest)
+            .for_each(|ls| ls.rasterize(rasterizer));
+    }
 }

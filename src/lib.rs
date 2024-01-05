@@ -245,14 +245,14 @@ impl Default for MergeAlgorithm {
     }
 }
 
+// Test Code, delete when done
 /// Rasterization merge_algorithm for determining whether a given pixel should be updated
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PixelInclusion {
-    /// Update any pixel that is touched by the line or polygon
-    Touched,
-
     /// Update any pixel whose center point is within the polygon
     Center,
+    /// Update any pixel that is touched by the line or polygon
+    Touched,
 }
 
 impl Default for PixelInclusion {

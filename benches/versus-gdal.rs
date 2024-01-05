@@ -71,7 +71,7 @@ fn i_rasterize(shapes: &[Polygon<f64>]) -> Result<Array2<f32>> {
     let mut r = LabelBuilder::background(0.)
         .width(WIDTH)
         .height(HEIGHT)
-        .algorithm(MergeAlgorithm::Add)
+        .merge_algorithm(MergeAlgorithm::Add)
         .build()?;
     shapes.iter().try_for_each(|shape| r.rasterize(shape, 1.))?;
     Ok(r.finish())
