@@ -1,5 +1,5 @@
 use geo::{
-    map_coords::MapCoords, Coordinate, Geometry, Line, LineString, MultiLineString, MultiPoint,
+    map_coords::MapCoords, Coord, Geometry, Line, LineString, MultiLineString, MultiPoint,
     MultiPolygon, Point, Polygon, Rect, Triangle,
 };
 use pretty_assertions::assert_eq;
@@ -35,10 +35,10 @@ prop_compose! {
 prop_compose! {
     fn arb_rect()(center in arb_point(),
 		  width in 0.0..20., height in 0.0..20.) -> Rect<f64> {
-	let min: Coordinate<f64> = (
+	let min: Coord<f64> = (
 	    center.x() - width / 2.,
 	    center.y() - height / 2.).into();
-	let max: Coordinate<f64> = (
+	let max: Coord<f64> = (
 	    center.x() + width / 2.,
 	    center.y() + height/2.).into();
 	Rect::new(min, max)
@@ -52,9 +52,9 @@ prop_compose! {
 		        radius in 0.000001..15.0) -> (Point<f64>, LineString<f64>) {
 	let angles = (0..exterior_points)
 	    .map(|idx| 2.0 * std::f64::consts::PI * (idx as f64) / (exterior_points as f64));
-	let points: Vec<geo::Coordinate<f64>> = angles
+	let points: Vec<geo::Coord<f64>> = angles
 	    .map(|angle_rad| angle_rad.sin_cos())
-	    .map(|(sin, cos)| geo::Coordinate {
+	    .map(|(sin, cos)| geo::Coord {
 		x: center.x() + radius * cos,
 		y: center.y() + radius * sin,
 	    })
@@ -71,7 +71,9 @@ fn shrink_ring(center: &Point<f64>, ring: &LineString<f64>, scale_factor: f64) -
         .then_translate(Vector2D::new(-cx, -cy))
         .then_scale(scale_factor, scale_factor)
         .then_translate(Vector2D::new(cx, cy));
-    ring.map_coords(|&(x, y)| transform.transform_point(Point2D::new(x, y)).to_tuple())
+    ring.map_coords(|Coord { x, y }| {
+        Coord::from(transform.transform_point(Point2D::new(x, y)).to_tuple())
+    })
 }
 
 #[rustfmt::skip]

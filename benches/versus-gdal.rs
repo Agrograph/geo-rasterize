@@ -3,8 +3,9 @@ use std::{fs::File, io::BufReader};
 use anyhow::Result;
 use criterion::{criterion_group, criterion_main, Criterion};
 use flatgeobuf::{FallibleStreamingIterator, FgbReader};
-use geo::map_coords::MapCoordsInplace;
+use geo::map_coords::MapCoordsInPlace;
 use geo::prelude::*;
+use geo::Coord;
 use geo::Geometry;
 use geo::Polygon;
 use geo_rasterize::LabelBuilder;
@@ -15,8 +16,8 @@ use rand::prelude::*;
 
 fn load() -> Result<Vec<Polygon<f64>>> {
     let mut f = BufReader::new(File::open("benches/us-county-2018.fgb")?);
-    let mut fgb = FgbReader::open(&mut f)?;
-    let mut result = Vec::with_capacity(fgb.select_all()?);
+    let mut fgb = FgbReader::open(&mut f)?.select_all()?;
+    let mut result = Vec::with_capacity(fgb.features_count().unwrap());
     while let Some(feature) = fgb.next()? {
         match feature.to_geo()? {
             Geometry::Polygon(poly) => {
@@ -40,18 +41,21 @@ fn transform(shapes: &[Polygon<f64>]) -> Result<Vec<Polygon<f64>>> {
     let mut result = Vec::with_capacity(shapes.len());
     for shape in shapes {
         let angle = rng.gen_range(0. ..360.);
-        let mut shape = shape.rotate(angle);
+        let mut shape = shape.rotate_around_center(angle);
 
         // recenter at origin
         let center = shape.centroid().unwrap();
-        shape.translate_inplace(-center.x(), -center.y());
+        shape.translate_mut(-center.x(), -center.y());
 
         // scale
         let bounds = shape.bounding_rect().unwrap();
         let scale_factor = rng.gen_range(0.01..10.) * (WIDTH.max(HEIGHT) as f64)
             / bounds.width().max(bounds.height());
-        shape.map_coords_inplace(|&(x, y)| (scale_factor * x, scale_factor * y));
-        shape.translate_inplace(
+        shape.map_coords_in_place(|c| Coord {
+            x: scale_factor * c.x,
+            y: scale_factor * c.y,
+        });
+        shape.translate_mut(
             rng.gen_range(0..WIDTH) as f64,
             rng.gen_range(0..HEIGHT) as f64,
         );

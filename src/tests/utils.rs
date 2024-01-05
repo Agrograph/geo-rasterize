@@ -1,21 +1,26 @@
 use std::fmt::Debug;
 
+use super::{MergeAlgorithm, Rasterize, Rasterizer};
 use anyhow::Result;
-use geo::algorithm::{
+use geo::{Coord,CoordNum,algorithm::{
     coords_iter::CoordsIter,
-    map_coords::{MapCoords, MapCoordsInplace},
-};
+    map_coords::{MapCoords, MapCoordsInPlace},
+}};
 use ndarray::Array2;
 use num_traits::{Num, NumCast};
 
-use super::{MergeAlgorithm, Rasterize, Rasterizer};
+use Coord as Coordinate;
 
-fn to_float<T>(coords: &(T, T)) -> (f64, f64)
+fn to_float<T>(coord: Coordinate<T>) -> Coord<f64>
 where
-    T: Into<f64> + Copy,
+    T: CoordNum,
 {
-    (coords.0.into(), coords.1.into())
+    Coord {
+        x: coord.x.to_f64().unwrap(),
+        y: coord.y.to_f64().unwrap(),
+    }
 }
+
 
 /// Use `gdal`'s rasterizer to rasterize some shape into a
 /// (widith, height) window of u8.
@@ -27,19 +32,17 @@ pub fn gdal_rasterize<Coord, InputShape, ShapeAsF64>(
 ) -> Result<Array2<u8>>
 where
     InputShape: MapCoords<Coord, f64, Output = ShapeAsF64>,
-    ShapeAsF64: Rasterize<u8>
-        + for<'a> CoordsIter<'a, Scalar = f64>
-        + Into<geo::Geometry<f64>>
-        + MapCoordsInplace<f64>,
+    ShapeAsF64:
+        Rasterize<u8> + CoordsIter<Scalar = f64> + Into<geo::Geometry<f64>> + MapCoordsInPlace<f64>,
     Coord: Into<f64> + Copy + Debug + Num + NumCast + PartialOrd,
 {
     use gdal::{
         raster::{rasterize, RasterizeOptions},
         vector::ToGdal,
-        Driver,
+        DriverManager,
     };
 
-    let driver = Driver::get("MEM")?;
+    let driver = DriverManager::get_driver_by_name("MEM")?;
     let mut ds = driver.create_with_band_type::<u8, &str>(
         "some_filename",
         width as isize,
@@ -82,10 +85,8 @@ pub fn compare<Coord, InputShape, ShapeAsF64>(
 ) -> Result<(Array2<u8>, Array2<u8>)>
 where
     InputShape: MapCoords<Coord, f64, Output = ShapeAsF64>,
-    ShapeAsF64: Rasterize<u8>
-        + for<'a> CoordsIter<'a, Scalar = f64>
-        + Into<geo::Geometry<f64>>
-        + MapCoordsInplace<f64>,
+    ShapeAsF64:
+        Rasterize<u8> + CoordsIter<Scalar = f64> + Into<geo::Geometry<f64>> + MapCoordsInPlace<f64>,
     Coord: Into<f64> + Copy + Debug + Num + NumCast + PartialOrd,
 {
     let mut r = Rasterizer::new(width, height, None, algorithm, 0u8);

@@ -5,15 +5,16 @@ use euclid::{Transform2D, UnknownUnit};
 use geo::{
     algorithm::{
         coords_iter::CoordsIter,
-        map_coords::{MapCoords, MapCoordsInplace},
+        map_coords::{MapCoords, MapCoordsInPlace},
     },
-    Geometry, GeometryCollection, Line, LineString, MultiLineString, MultiPoint, MultiPolygon,
-    Point, Polygon, Rect, Triangle,
+    Coord, CoordNum, Geometry, GeometryCollection, Line, LineString, MultiLineString, MultiPoint,
+    MultiPolygon, Point, Polygon, Rect, Triangle,
 };
 use ndarray::s;
 use ndarray::Array2;
 use num_traits::{Num, NumCast};
 use thiserror::Error;
+use Coord as Coordinate;
 
 mod poly;
 use poly::rasterize_polygon;
@@ -137,11 +138,14 @@ pub struct BinaryRasterizer {
     inner: Rasterizer<u8>,
 }
 
-fn to_float<T>(coords: &(T, T)) -> (f64, f64)
+fn to_float<T>(coord: Coord<T>) -> Coord<f64>
 where
-    T: Into<f64> + Copy,
+    T: CoordNum,
 {
-    (coords.0.into(), coords.1.into())
+    Coord {
+        x: coord.x.to_f64().unwrap(),
+        y: coord.y.to_f64().unwrap(),
+    }
 }
 
 impl BinaryRasterizer {
@@ -168,7 +172,7 @@ impl BinaryRasterizer {
     pub fn rasterize<Coord, InputShape, ShapeAsF64>(&mut self, shape: &InputShape) -> Result<()>
     where
         InputShape: MapCoords<Coord, f64, Output = ShapeAsF64>,
-        ShapeAsF64: Rasterize<u8> + for<'a> CoordsIter<'a, Scalar = f64> + MapCoordsInplace<f64>,
+        ShapeAsF64: Rasterize<u8> + CoordsIter<Scalar = f64> + MapCoordsInPlace<f64>,
         Coord: Into<f64> + Copy + Debug + Num + NumCast + PartialOrd,
     {
         // first, convert our input shape so that its coordinates are of type f64
@@ -480,11 +484,11 @@ where
     ) -> Result<()>
     where
         InputShape: MapCoords<Coord, f64, Output = ShapeAsF64>,
-        ShapeAsF64: Rasterize<Label> + for<'a> CoordsIter<'a, Scalar = f64> + MapCoordsInplace<f64>,
+        ShapeAsF64: Rasterize<Label> + CoordsIter<Scalar = f64> + MapCoordsInPlace<f64>,
         Coord: Into<f64> + Copy + Debug + Num + NumCast + PartialOrd,
     {
         // first, convert our input shape so that its coordinates are of type f64
-        let mut float = shape.map_coords(to_float);
+        let mut float: ShapeAsF64 = shape.map_coords(to_float);
 
         // then ensure that all coordinates are finite or bail
         let all_finite = float
@@ -501,8 +505,9 @@ where
         match self.geo_to_pix {
             None => float,
             Some(transform) => {
-                float.map_coords_inplace(|&(x, y)| {
-                    transform.transform_point(EuclidPoint::new(x, y)).to_tuple()
+                float.map_coords_in_place(|Coordinate { x, y }| {
+                    let z = transform.transform_point(EuclidPoint::new(x, y)).to_tuple();
+                    Coordinate::from(z)
                 });
                 float
             }
