@@ -139,7 +139,7 @@ fn arb_geo() -> impl Strategy<Value = Geometry<f64>> {
 proptest! {
     #[test]
     fn match_gdal(shapes in proptest::collection::vec(arb_geo(), 1..5)) {
-	let (actual, expected) = compare(17, 19, &shapes, MergeAlgorithm::Replace).unwrap();
+	let (actual, expected) = compare(17, 19, &shapes, MergeAlgorithm::Replace,crate::PixelInclusion::Touched).unwrap();
 	assert_eq!(actual, expected);
     }
 }

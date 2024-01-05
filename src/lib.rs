@@ -62,6 +62,8 @@ pub struct BinaryBuilder {
     width: Option<usize>,
     height: Option<usize>,
     geo_to_pix: Option<Transform>,
+    merge_algorithm: Option<MergeAlgorithm>,
+    pixel_inclusion: Option<PixelInclusion>,
 }
 
 impl BinaryBuilder {
@@ -84,11 +86,27 @@ impl BinaryBuilder {
         self
     }
 
+    pub fn merge_algorithm(mut self, merge_algorithm: MergeAlgorithm) -> Self {
+        self.merge_algorithm = Some(merge_algorithm);
+        self
+    }
+
+    pub fn pixel_inclusion(mut self, pixel_inclusion: PixelInclusion) -> Self {
+        self.pixel_inclusion = Some(pixel_inclusion);
+        self
+    }
+
     pub fn build(self) -> Result<BinaryRasterizer> {
         match (self.width, self.height) {
             (None, _) => Err(RasterizeError::MissingWidth),
             (_, None) => Err(RasterizeError::MissingHeight),
-            (Some(width), Some(height)) => BinaryRasterizer::new(width, height, self.geo_to_pix),
+            (Some(width), Some(height)) => BinaryRasterizer::new(
+                width,
+                height,
+                self.geo_to_pix,
+                self.merge_algorithm,
+                self.pixel_inclusion,
+            ),
         }
     }
 }
@@ -149,14 +167,27 @@ where
 }
 
 impl BinaryRasterizer {
-    pub fn new(width: usize, height: usize, geo_to_pix: Option<Transform>) -> Result<Self> {
+    pub fn new(
+        width: usize,
+        height: usize,
+        geo_to_pix: Option<Transform>,
+        merge_algorithm: Option<MergeAlgorithm>,
+        pixel_inclusion: Option<PixelInclusion>,
+    ) -> Result<Self> {
         let non_finite = geo_to_pix
             .map(|geo_to_pix| geo_to_pix.to_array().iter().any(|param| !param.is_finite()))
             .unwrap_or(false);
         if non_finite {
             Err(RasterizeError::NonFiniteCoordinate)
         } else {
-            let inner = Rasterizer::new(width, height, geo_to_pix, MergeAlgorithm::Replace, 0);
+            let inner = Rasterizer::new(
+                width,
+                height,
+                geo_to_pix,
+                merge_algorithm.unwrap_or_default(),
+                pixel_inclusion.unwrap_or_default(),
+                0,
+            );
             Ok(BinaryRasterizer { inner })
         }
     }
@@ -214,6 +245,22 @@ impl Default for MergeAlgorithm {
     }
 }
 
+/// Rasterization merge_algorithm for determining whether a given pixel should be updated
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PixelInclusion {
+    /// Update any pixel that is touched by the line or polygon
+    Touched,
+
+    /// Update any pixel whose center point is within the polygon
+    Center,
+}
+
+impl Default for PixelInclusion {
+    fn default() -> Self {
+        PixelInclusion::Touched
+    }
+}
+
 /// A builder that constructs [Rasterizer]s. Whereas
 /// [BinaryRasterizer] produces an array of booleans, [Rasterizer]
 /// produces an array of some generic type (`Label`) that implements
@@ -246,7 +293,8 @@ pub struct LabelBuilder<Label> {
     width: Option<usize>,
     height: Option<usize>,
     geo_to_pix: Option<Transform>,
-    algorithm: Option<MergeAlgorithm>,
+    merge_algorithm: Option<MergeAlgorithm>,
+    pixel_inclusion: Option<PixelInclusion>,
 }
 
 impl<Label> LabelBuilder<Label>
@@ -259,7 +307,8 @@ where
             width: None,
             height: None,
             geo_to_pix: None,
-            algorithm: None,
+            merge_algorithm: None,
+            pixel_inclusion: None,
         }
     }
 
@@ -278,8 +327,13 @@ where
         self
     }
 
-    pub fn algorithm(mut self, algorithm: MergeAlgorithm) -> Self {
-        self.algorithm = Some(algorithm);
+    pub fn merge_algorithm(mut self, merge_algorithm: MergeAlgorithm) -> Self {
+        self.merge_algorithm = Some(merge_algorithm);
+        self
+    }
+
+    pub fn pixel_inclusion(mut self, pixel_inclusion: PixelInclusion) -> Self {
+        self.pixel_inclusion = Some(pixel_inclusion);
         self
     }
 
@@ -291,7 +345,8 @@ where
                 width,
                 height,
                 self.geo_to_pix,
-                self.algorithm.unwrap_or_default(),
+                self.merge_algorithm.unwrap_or_default(),
+                self.pixel_inclusion.unwrap_or_default(),
                 self.background,
             )),
         }
@@ -342,7 +397,8 @@ where
 pub struct Rasterizer<Label> {
     pixels: Array2<Label>,
     geo_to_pix: Option<Transform>,
-    algorithm: MergeAlgorithm,
+    merge_algorithm: MergeAlgorithm,
+    pixel_inclusion: PixelInclusion,
     foreground: Label,
     previous_burnt_points: HashSet<(usize, usize)>,
     current_burnt_points: HashSet<(usize, usize)>,
@@ -356,14 +412,16 @@ where
         width: usize,
         height: usize,
         geo_to_pix: Option<Transform>,
-        algorithm: MergeAlgorithm,
+        merge_algorithm: MergeAlgorithm,
+        pixel_inclusion: PixelInclusion,
         background: Label,
     ) -> Self {
         let pixels = Array2::from_elem((height, width), background);
         Rasterizer {
             pixels,
             geo_to_pix,
-            algorithm,
+            merge_algorithm,
+            pixel_inclusion,
             foreground: background,
             previous_burnt_points: HashSet::new(),
             current_burnt_points: HashSet::new(),
@@ -417,7 +475,7 @@ where
         debug_assert!(ix < self.width());
         debug_assert!(iy < self.height());
         let mut slice = self.pixels.slice_mut(s![iy, ix]);
-        match self.algorithm {
+        match self.merge_algorithm {
             MergeAlgorithm::Replace => slice.fill(self.foreground),
             MergeAlgorithm::Add => {
                 slice.mapv_inplace(|v| v + self.foreground);
@@ -426,7 +484,7 @@ where
     }
 
     fn fill_pixel_no_repeat(&mut self, ix: usize, iy: usize, use_current_too: bool) {
-        match self.algorithm {
+        match self.merge_algorithm {
             MergeAlgorithm::Replace => {
                 self.fill_pixel(ix, iy);
             }
@@ -454,7 +512,7 @@ where
     // exclusive range (..), not inclusive (..=).
     fn fill_horizontal_line(&mut self, x_start: usize, x_end: usize, y: usize) {
         let mut slice = self.pixels.slice_mut(s![y, x_start..x_end]);
-        match self.algorithm {
+        match self.merge_algorithm {
             MergeAlgorithm::Replace => slice.fill(self.foreground),
             MergeAlgorithm::Add => {
                 slice.mapv_inplace(|v| v + self.foreground);

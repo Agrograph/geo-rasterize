@@ -9,7 +9,13 @@ use utils::compare;
 
 #[test]
 fn point() -> Result<()> {
-    let (actual, expected) = compare(6, 5, &[geo::Point::new(2, 3)], MergeAlgorithm::Replace)?;
+    let (actual, expected) = compare(
+        6,
+        5,
+        &[geo::Point::new(2, 3)],
+        MergeAlgorithm::Replace,
+        PixelInclusion::Touched,
+    )?;
     assert_eq!(actual, expected);
     Ok(())
 }
@@ -23,6 +29,7 @@ fn rect() -> Result<()> {
         5,
         &[geo::Rect::new((1, 1), (3, 2)).to_polygon()],
         MergeAlgorithm::Replace,
+        PixelInclusion::Touched,
     )?;
     assert_eq!(actual, expected);
     Ok(())
@@ -35,6 +42,7 @@ fn line() -> Result<()> {
         5,
         &[geo::Line::new((0, 0), (6, 6))],
         MergeAlgorithm::Replace,
+        PixelInclusion::Touched,
     )?;
     assert_eq!(actual, expected);
     Ok(())
@@ -47,6 +55,7 @@ fn line2() -> Result<()> {
         6,
         &[geo::Line::new((6, 6), (0, 0))],
         MergeAlgorithm::Replace,
+        PixelInclusion::Touched,
     )?;
     assert_eq!(actual, expected);
     Ok(())
@@ -59,6 +68,7 @@ fn line_vertical() -> Result<()> {
         5,
         &[geo::Line::new((2, 1), (2, 4))],
         MergeAlgorithm::Replace,
+        PixelInclusion::Touched,
     )?;
     assert_eq!(actual, expected);
     Ok(())
@@ -71,6 +81,7 @@ fn line_horizontal() -> Result<()> {
         5,
         &[geo::Line::new((1, 2), (4, 2))],
         MergeAlgorithm::Replace,
+        PixelInclusion::Touched,
     )?;
     assert_eq!(actual, expected);
     Ok(())
@@ -83,6 +94,7 @@ fn line_diag() -> Result<()> {
         5,
         &[geo::Line::new((1, 1), (3, 3))],
         MergeAlgorithm::Replace,
+        PixelInclusion::Touched,
     )?;
     assert_eq!(actual, expected);
 
@@ -91,6 +103,7 @@ fn line_diag() -> Result<()> {
         5,
         &[geo::Line::new((3, 1), (1, 3))],
         MergeAlgorithm::Replace,
+        PixelInclusion::Touched,
     )?;
     assert_eq!(actual, expected);
     Ok(())
@@ -113,11 +126,23 @@ fn line3() -> Result<()> {
     // invocation function to covert geometries of that type into
     // GDAL LinearRings?
 
-    let (actual, expected) = compare(5, 5, &[poly.exterior().clone()], MergeAlgorithm::Replace)?;
+    let (actual, expected) = compare(
+        5,
+        5,
+        &[poly.exterior().clone()],
+        MergeAlgorithm::Replace,
+        PixelInclusion::Touched,
+    )?;
     assert_eq!(actual, expected);
 
     for line in poly.exterior().lines() {
-        let (actual, expected) = compare(5, 5, &[line], MergeAlgorithm::Replace)?;
+        let (actual, expected) = compare(
+            5,
+            5,
+            &[line],
+            MergeAlgorithm::Replace,
+            PixelInclusion::Touched,
+        )?;
         assert_eq!(actual, expected);
     }
     Ok(())
@@ -133,7 +158,13 @@ fn poly() -> Result<()> {
         (x:4, y:2),
     ];
 
-    let (actual, expected) = compare(5, 5, &[poly], MergeAlgorithm::Replace)?;
+    let (actual, expected) = compare(
+        5,
+        5,
+        &[poly],
+        MergeAlgorithm::Replace,
+        PixelInclusion::Touched,
+    )?;
     assert_eq!(actual, expected);
     Ok(())
 }
@@ -170,7 +201,8 @@ fn heatmap1() -> Result<()> {
     let mut rasterizer = LabelBuilder::background(0)
         .width(5)
         .height(5)
-        .algorithm(MergeAlgorithm::Add)
+        .merge_algorithm(MergeAlgorithm::Add)
+        .pixel_inclusion(PixelInclusion::Touched)
         .build()?;
     for line in lines {
         rasterizer.rasterize(&line, 1)?;
@@ -198,7 +230,8 @@ fn heatmap_transform() -> Result<()> {
     let mut rasterizer = LabelBuilder::background(0)
         .width(5)
         .height(5)
-        .algorithm(MergeAlgorithm::Add)
+        .merge_algorithm(MergeAlgorithm::Add)
+        .pixel_inclusion(PixelInclusion::Touched)
         .geo_to_pix(transform)
         .build()?;
     assert_eq!(rasterizer.geo_to_pix(), Some(transform));
@@ -233,7 +266,13 @@ fn bad_line() -> Result<()> {
             y: 17.2410885032527,
         },
     };
-    let (actual, expected) = compare(17, 19, &[line], MergeAlgorithm::Replace)?;
+    let (actual, expected) = compare(
+        17,
+        19,
+        &[line],
+        MergeAlgorithm::Replace,
+        PixelInclusion::Touched,
+    )?;
     assert_eq!(actual, expected);
     Ok(())
 }
@@ -251,7 +290,13 @@ fn bad_rect() -> Result<()> {
         },
     );
 
-    let (actual, expected) = compare(17, 19, &[r], MergeAlgorithm::Replace)?;
+    let (actual, expected) = compare(
+        17,
+        19,
+        &[r],
+        MergeAlgorithm::Replace,
+        PixelInclusion::Touched,
+    )?;
     assert_eq!(actual, expected);
     Ok(())
 }
@@ -280,7 +325,13 @@ fn bad_poly() -> Result<()> {
         ],
         vec![],
     );
-    let (actual, expected) = compare(17, 19, &[r], MergeAlgorithm::Replace)?;
+    let (actual, expected) = compare(
+        17,
+        19,
+        &[r],
+        MergeAlgorithm::Replace,
+        PixelInclusion::Touched,
+    )?;
     assert_eq!(actual, expected);
     Ok(())
 }
@@ -309,7 +360,13 @@ fn bad_poly2() -> Result<()> {
         ],
         vec![],
     );
-    let (actual, expected) = compare(17, 19, &[r], MergeAlgorithm::Replace)?;
+    let (actual, expected) = compare(
+        17,
+        19,
+        &[r],
+        MergeAlgorithm::Replace,
+        PixelInclusion::Touched,
+    )?;
     assert_eq!(actual, expected);
     Ok(())
 }
@@ -326,7 +383,13 @@ fn bad_line2() -> Result<()> {
             y: 1.003085512751344,
         },
     };
-    let (actual, expected) = compare(17, 19, &[line], MergeAlgorithm::Replace)?;
+    let (actual, expected) = compare(
+        17,
+        19,
+        &[line],
+        MergeAlgorithm::Replace,
+        PixelInclusion::Touched,
+    )?;
     assert_eq!(actual, expected);
     Ok(())
 }
@@ -339,10 +402,22 @@ fn stuff() -> Result<()> {
         .geo_to_pix(Transform::identity())
         .build()?;
 
-    let r = BinaryRasterizer::new(5, 7, None)?;
+    let r = BinaryRasterizer::new(
+        5,
+        7,
+        None,
+        Some(MergeAlgorithm::default()),
+        Some(PixelInclusion::default()),
+    )?;
     assert_eq!(r.geo_to_pix(), None);
     let transform = Transform::identity();
-    let r = BinaryRasterizer::new(5, 7, Some(transform))?;
+    let r = BinaryRasterizer::new(
+        5,
+        7,
+        Some(transform),
+        Some(MergeAlgorithm::default()),
+        Some(PixelInclusion::default()),
+    )?;
     assert_eq!(r.geo_to_pix(), Some(transform));
     Ok(())
 }
@@ -383,7 +458,9 @@ fn check_errors() -> Result<()> {
         BinaryRasterizer::new(
             5,
             8,
-            Some(Transform::from_array([0., 1., 2., 3., 4., f64::NAN]))
+            Some(Transform::from_array([0., 1., 2., 3., 4., f64::NAN])),
+            Some(MergeAlgorithm::default()),
+            Some(PixelInclusion::default())
         )
         .err()
         .unwrap(),
@@ -395,7 +472,7 @@ fn check_errors() -> Result<()> {
 #[test]
 fn heatmap2() -> Result<()> {
     let lines = vec![Line::new((0, 0), (5, 5)), Line::new((5, 0), (0, 5))];
-    let (actual, expected) = compare(5, 5, &lines, MergeAlgorithm::Add)?;
+    let (actual, expected) = compare(5, 5, &lines, MergeAlgorithm::Add, PixelInclusion::Touched)?;
     assert_eq!(actual, expected);
     Ok(())
 }

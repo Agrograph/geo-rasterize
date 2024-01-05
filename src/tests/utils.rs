@@ -1,11 +1,13 @@
 use std::fmt::Debug;
-
-use super::{MergeAlgorithm, Rasterize, Rasterizer};
+use super::{MergeAlgorithm, PixelInclusion, Rasterize, Rasterizer};
 use anyhow::Result;
-use geo::{Coord,CoordNum,algorithm::{
-    coords_iter::CoordsIter,
-    map_coords::{MapCoords, MapCoordsInPlace},
-}};
+use geo::{
+    algorithm::{
+        coords_iter::CoordsIter,
+        map_coords::{MapCoords, MapCoordsInPlace},
+    },
+    Coord, CoordNum,
+};
 use ndarray::Array2;
 use num_traits::{Num, NumCast};
 
@@ -20,7 +22,6 @@ where
         y: coord.y.to_f64().unwrap(),
     }
 }
-
 
 /// Use `gdal`'s rasterizer to rasterize some shape into a
 /// (widith, height) window of u8.
@@ -81,7 +82,8 @@ pub fn compare<Coord, InputShape, ShapeAsF64>(
     width: usize,
     height: usize,
     shapes: &[InputShape],
-    algorithm: MergeAlgorithm,
+    merge_algorithm: MergeAlgorithm,
+    pixel_inclusion: PixelInclusion,
 ) -> Result<(Array2<u8>, Array2<u8>)>
 where
     InputShape: MapCoords<Coord, f64, Output = ShapeAsF64>,
@@ -89,13 +91,13 @@ where
         Rasterize<u8> + CoordsIter<Scalar = f64> + Into<geo::Geometry<f64>> + MapCoordsInPlace<f64>,
     Coord: Into<f64> + Copy + Debug + Num + NumCast + PartialOrd,
 {
-    let mut r = Rasterizer::new(width, height, None, algorithm, 0u8);
+    let mut r = Rasterizer::new(width, height, None, merge_algorithm, pixel_inclusion, 0u8);
     for shape in shapes.iter() {
         r.rasterize(shape, 1u8)?;
     }
     let actual = r.finish();
 
-    let expected = gdal_rasterize(width, height, shapes, algorithm)?;
+    let expected = gdal_rasterize(width, height, shapes, merge_algorithm)?;
     if actual != expected {
         println!("{}\n\n{}", actual, expected);
     }
