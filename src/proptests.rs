@@ -135,11 +135,25 @@ fn arb_geo() -> impl Strategy<Value = Geometry<f64>> {
     ]
 }
 
+fn arb_geo_closed() -> impl Strategy<Value = Geometry<f64>> {
+    prop_oneof![
+        arb_poly().prop_map(Geometry::Polygon),
+        arb_rect().prop_map(Geometry::Rect),
+        arb_triangle().prop_map(Geometry::Triangle),
+        arb_multipoly().prop_map(Geometry::MultiPolygon)
+    ]
+}
+
 #[rustfmt::skip]
 proptest! {
     #[test]
-    fn match_gdal(shapes in proptest::collection::vec(arb_geo(), 1..5)) {
+    fn match_gdal_touched(shapes in proptest::collection::vec(arb_geo(), 1..5)) {
 	let (actual, expected) = compare(17, 19, &shapes, MergeAlgorithm::Replace,crate::PixelInclusion::Touched).unwrap();
+	assert_eq!(actual, expected);
+    }
+    #[test]
+    fn match_gdal_center(shapes in proptest::collection::vec(arb_geo_closed(), 1..5)) {
+	let (actual, expected) = compare(17, 19, &shapes, MergeAlgorithm::Replace,crate::PixelInclusion::Center).unwrap();
 	assert_eq!(actual, expected);
     }
 }

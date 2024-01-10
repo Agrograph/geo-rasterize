@@ -37,8 +37,11 @@ including:
 Those shapes can have any coordintes with any numeric type as long as
 it can be converted into `f64`.
 
-This crate matches GDAL's behavior when GDAL is supplied with the
-`ALL_TOUCHED=TRUE` option. So you can use it as a drop-in replacement
+This crate no longer matches GDAL's behavior (as ov version 0.16.0) when GDAL is supplied with the
+`ALL_TOUCHED=TRUE` option.  It does largely match for closed boundaries when supplied with the 
+'ALL_TOUCHED=FALSE' option, which corresponds to using PixelInclusion::Center. There are some edge cases
+where you can differ by a pixel due to differences between the GDAL version (0.11.0) algorithm that this Crate
+was coded against.  So you can use it as a drop-in replacement
 for GDAL if you only need a GDAL-compatible rasterizer. Also, there's
 no support for GDAL's `BURN_VALUE_FROM=Z`. But otherwise, this code
 should produce identical results to GDAL's rasterizer -- the

@@ -3,5 +3,5 @@
 # novel cases are generated.
 #
 # It is recommended to check this file in to source control so that
-# everyone who runs the test benefits from these saved cases.
-cc 3b6b8c4f6e2bd8db2789acfc899df80caad00840fdca48052194109633e7b26b # shrinks to shape = [LineString(LineString([Coordinate { x: 0.0, y: 0.995529841217325 }, Coordinate { x: 14.345339055640835, y: 1.003085512751344 }]))]
+# everyone who runs the test benefits from these saved cases.c arcc 0755f75ae47e533c12901f524f3814120db801ffee47dc7f9b03198738bbfcab # shrinks to shapes = [MultiLineString(MultiLineString([LineString([Coord { x: 0.0, y: 0.0 }, Coord { x: -1.0598728371184059, y: -1.413009315677682 }])]))]
+cc 4357fd31f7885e5acb09d532f2ddceed57cf332d5c53b652b48c24bfd4e874c5 # shrinks to shapes = [LineString(LineString([Coord { x: 5.000909381617377, y: 0.0 }, Coord { x: 4.994289088575346, y: 0.0 }]))]

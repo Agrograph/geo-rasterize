@@ -27,7 +27,7 @@ where
         *line
     };
 
-    const THRESHOLD: f64 = 0.01;
+    const THRESHOLD: f64 = 0.001;
     let is_vertical = (line.start.x.floor() == line.end.x.floor()) || line.dx().abs() < THRESHOLD;
     let is_horizontal = (line.start.y.floor() == line.end.y.floor()) || line.dy().abs() < THRESHOLD;
 

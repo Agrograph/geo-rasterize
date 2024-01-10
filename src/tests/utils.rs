@@ -1,5 +1,4 @@
-use std::fmt::Debug;
-use super::{MergeAlgorithm, Rasterize, Rasterizer, PixelInclusion};
+use super::{MergeAlgorithm, PixelInclusion, Rasterize, Rasterizer};
 use anyhow::Result;
 use geo::{
     algorithm::{
@@ -10,6 +9,7 @@ use geo::{
 };
 use ndarray::Array2;
 use num_traits::{Num, NumCast};
+use std::fmt::Debug;
 
 use Coord as Coordinate;
 
@@ -30,6 +30,7 @@ pub fn gdal_rasterize<Coord, InputShape, ShapeAsF64>(
     height: usize,
     shapes: &[InputShape],
     algorithm: MergeAlgorithm,
+    all_touched: bool,
 ) -> Result<Array2<u8>>
 where
     InputShape: MapCoords<Coord, f64, Output = ShapeAsF64>,
@@ -51,7 +52,7 @@ where
         1,
     )?;
     let options = RasterizeOptions {
-        all_touched: true,
+        all_touched,
         merge_algorithm: match algorithm {
             MergeAlgorithm::Replace => gdal::raster::MergeAlgorithm::Replace,
             MergeAlgorithm::Add => gdal::raster::MergeAlgorithm::Add,
@@ -97,7 +98,12 @@ where
     }
     let actual = r.finish();
 
-    let expected = gdal_rasterize(width, height, shapes, merge_algorithm)?;
+    let all_touched = match pixel_inclusion {
+        PixelInclusion::Center => false,
+        PixelInclusion::Touched => true,
+    };
+
+    let expected = gdal_rasterize(width, height, shapes, merge_algorithm,all_touched)?;
     if actual != expected {
         println!("{}\n\n{}", actual, expected);
     }

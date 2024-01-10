@@ -89,7 +89,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     group.bench_function("me", |b| b.iter(|| i_rasterize(&shapes)));
     group.bench_function("gdal", |b| {
-        b.iter(|| gdal_rasterize(WIDTH, HEIGHT, &shapes, MergeAlgorithm::Add))
+        b.iter(|| gdal_rasterize(WIDTH, HEIGHT, &shapes, MergeAlgorithm::Add, true))
     });
 }
 
